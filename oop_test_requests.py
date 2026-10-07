@@ -3,42 +3,53 @@ import requests
 import random
 import time
 
-# КОНСТАНТЫ
-# 1) Отсюда получим список категорий (для выбора):
-CATEGORIES_URL = "https://api.chucknorris.io/jokes/categories"
-# 2) Отсюда получим случайную шутку выбранной категории, добавив после "=" значение категории
-JOKE_SELECTED_BY_CATEGORY = "https://api.chucknorris.io/jokes/random?category="
 
 class JokeCreateTesting():
+    def __init__(self):  # Создаем атрибуты экземпляра класса
+    # 1) Адрес списка категорий (для выбора):
+        self.categories_url = "https://api.chucknorris.io/jokes/categories"
+    # 2) Адрес случайной шутки по выбранной категории без необходимого значения категории:
+        self.joke_selected_by_category = "https://api.chucknorris.io/jokes/random?category="
+    # 3) Переменная для выбранной категории:
+        self.selected_category = ""
 
-    def category_select(self):  # Получаем список категорий шуток и выбираем одну категорию рандомно
-        self.result = requests.get(CATEGORIES_URL)  # GET-запрос на получение списка категорий
-        self.categories = self.result.json()  # весь ответ сервера
-        print(f"Список категорий шуток получен с адреса {CATEGORIES_URL}:")
-        # Из всего ответа сервера берем только значение категорий, преобразуем в строку и выводим, убрав лишние символы:
-        print(str(self.categories).strip("[]").replace("'", ""))
+    def category_select(self):  # Получаем список категорий и выбираем одну рандомно
+        result = requests.get(self.categories_url)  # ответ на GET-запрос
+        categories = result.json()  # список категорий из ответа
+        print(f"Список категорий шуток получен с адреса {self.categories_url}:")
+        # Из всего ответа сервера берем только значение категорий,
+        # преобразуем в строку и выводим, убрав лишние символы:
+        print(str(categories).strip("[]").replace("'", ""))
         time.sleep(1)
-        self.selected_category = random.choice(self.categories)  # категорию выбираем рандомно
+        # Рандомно выбираем категорию, переводим строку, если надо
+        self.selected_category = str(random.choice(categories))
         # это будет использовано для энд-пойнта с выбором категории
         print(f"Выбрана категория шутки: {self.selected_category}")
 
-    def getting_the_joke(self):  # Запрос на получение рандомной шутки:
-        self.current_url = f"{JOKE_SELECTED_BY_CATEGORY}{self.selected_category}"  # добавили к адресу выбранную категорию
-        self.result = requests.get(self.current_url)  # весь ответ сервера на GET-запрос
-        print(f"GET-запрос отправлен по адресу: {self.current_url}")
-        print("Cтатус код ответа:",self.result.status_code)  # получаем статус-код из (весь ответ сервера)
+    def getting_the_joke(self):  # Тестируем получение рандомной шутки выбранной категории
+        # Добавим к неполному адресу выбранную категорию:
+        current_url = f"{self.joke_selected_by_category}{self.selected_category}"
+        result = requests.get(current_url)  # весь ответ сервера на GET-запрос
+        print(f"GET-запрос отправлен по адресу: {current_url}")
+        # Выводим на экран статус-код из ответа сервера
+        print("Cтатус код ответа:",result.status_code)
 
-        # Проверка на статус-код:
-        assert self.result.status_code == 200, "Провал, статус код НЕверен!"  # Проверка условия ФР == ОР
+        # Проверка на статус-код: (Проверка условия ФР == ОР)
+        assert result.status_code == 200, "Провал, статус код НЕверен!"
         print("\033[32mУспех, статус код ответа сервера верен\033[0m")  # если ОР == ФР
 
-        # Проверка на соответствие категории:
-        fact_category = str(self.result.json().get('categories')).strip("'[]'") # получаем из ответа и убираем лишние символы
-        assert fact_category == str(self.selected_category), "Провал, фактическая категория полученной шутки НЕ соответствует ожидаемой"
-        print(f'32mУспех, фактическая категория полученной шутки ({fact_category}) соответствует ожидаемой\033[0m')
+        # Проверка на соответствие категории полученной шутки.
+        # Из ответа в формате JSON получаем списком категории (категорию) по ключу categories
+        fact_categories_list = result.json().get("categories", [])
+        # Проверяем, есть ли выбранная категория в списке из полученных категорий
+        assert (self.selected_category in fact_categories_list), \
+            "Провал, фактическая категория полученной шутки НЕ соответствует ожидаемой"
+        print(f'\033[32mУспех, фактическая категория полученной шутки '
+            f'({str(fact_categories_list).strip("[]").replace("'","")}) '
+            f'соответствует ожидаемой ({self.selected_category})\033[0m')
 
         # Проверка на содержании имени Chuck в теле шутки:
-        joke_body = self.result.json().get("value","") # текст шутки в поле value,
+        joke_body = result.json().get("value","") # текст шутки в поле value,
         # если такое поле в ответе есть, поэтому и "", если поле value отсутствует
         # Проверяем вхождение слова Chuck в текст шутки:
         assert "Chuck" in joke_body, "Имя Chuck в теле полученной шутки НЕ содержится"
@@ -47,6 +58,7 @@ class JokeCreateTesting():
         # Вывод на печать самой шутки:
         print(f"Текст полученной шутки:\n\033[36m{joke_body}\033[0m",sep='')
 
+
 start = JokeCreateTesting()  # Создаём экземпляр класса
-start.category_select()  # Получаем список категорий и выбираем одну категорию
-start.getting_the_joke()  # Тестируем получение шутки выбранной категории
+start.category_select()  # Получаем список категорий и выбираем одну категорию (рандомно)
+start.getting_the_joke()  # Тестируем получение рандомной шутки выбранной категории
